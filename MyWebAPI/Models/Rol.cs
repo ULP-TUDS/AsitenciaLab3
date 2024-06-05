@@ -13,6 +13,6 @@ namespace MyWebAPI.Models
         
         [Required]
         [MaxLength(255)]
-        public string NombreRol { get; set; }
+        public string Nombre { get; set; }
     }
 }
