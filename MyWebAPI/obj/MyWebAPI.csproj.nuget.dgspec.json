@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\MyWebAPI.csproj": {}
+    "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\MyWebAPI.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\MyWebAPI.csproj": {
+    "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\MyWebAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\MyWebAPI.csproj",
+        "projectUniqueName": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\MyWebAPI.csproj",
         "projectName": "MyWebAPI",
-        "projectPath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\MyWebAPI.csproj",
+        "projectPath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\MyWebAPI.csproj",
         "packagesPath": "C:\\Users\\Home\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\obj\\",
+        "outputPath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Home\\AppData\\Roaming\\NuGet\\NuGet.Config"

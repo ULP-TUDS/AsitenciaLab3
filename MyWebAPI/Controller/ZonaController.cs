@@ -80,7 +80,7 @@ public async Task<IActionResult> RecuperarSeleccionada([FromBody] Filtrado filtr
             Grupo grupo = new Grupo
             {
                 Empleado1 = empleadosDesordenados[i],
-                zona = zonasDesordenadas[i / 2]  // Nota la división entera para el índice correcto
+                zona = zonasDesordenadas[i / 2]  
             };
 
             if (i + 1 < empleadosDesordenados.Count)

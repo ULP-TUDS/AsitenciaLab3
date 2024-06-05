@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "iL242mc2pES5rR5Sfw9xxV7pS4wMyrLmVGu09Jv8l+nESeyY7n8utr25oCj0qWrfJJhQSZ8tIokYs8AzhcfYYg==",
+  "dgSpecHash": "UxVFfRKu7fdxtHDNqRTSK6CmYZBbQB7yTP5LbMJrvUGfWzoNu+cGAWDxy/J0cTBW+6NRnQlgiS+6zsHmOMrCiA==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\MyWebAPI\\MyWebAPI.csproj",
+  "projectFilePath": "C:\\Users\\Home\\OneDrive\\Escritorio\\Promlab3\\AsitenciaLab3\\MyWebAPI\\MyWebAPI.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Home\\.nuget\\packages\\azure.core\\1.35.0\\azure.core.1.35.0.nupkg.sha512",
     "C:\\Users\\Home\\.nuget\\packages\\azure.identity\\1.10.3\\azure.identity.1.10.3.nupkg.sha512",
