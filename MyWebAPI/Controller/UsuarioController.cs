@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
@@ -5,24 +6,29 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyWebAPI.Models;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace MyWebAPI.Controllers
-{
+{  
     [Route("api/[controller]")]
-    [ApiController]
-    //[Authorize]
+	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+	[ApiController]
+    
     public class UsuarioController : ControllerBase
     {
         private readonly DataContext _context;
         private readonly IConfiguration config;
 
-        public UsuarioController(DataContext context,IConfiguration config)
+        private readonly IWebHostEnvironment environment;
+
+        public UsuarioController(DataContext context,IConfiguration config, IWebHostEnvironment env)
         {
             _context = context;
             this.config = config;
+            environment=env;
 
         }
 
@@ -37,6 +43,7 @@ namespace MyWebAPI.Controllers
                 .ToListAsync();
         }
  [HttpGet("GetUsuariosTurno")]
+ [Authorize(Policy = "Administrador")]
 public async Task<IActionResult> GetUsuariosTurno([FromBody] Filtrado filtrado)
 {
     var usuarios = await _context.Usuario
