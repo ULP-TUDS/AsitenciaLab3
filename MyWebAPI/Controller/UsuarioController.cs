@@ -114,7 +114,8 @@ public async Task<IActionResult> CargaPersonal([FromBody] Usuario usuario)
 			
                   var p = await _context.Usuario
             .Include(u => u.Rol) // Incluye la propiedad de navegación Rol
-            .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Id == loginView.Rol);
+           // .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Id == loginView.Rol);
+		   .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Nombre == loginView.Rol);
 				if (p == null || p.Password != hashed)
 				{
 					return BadRequest("Nombre de usuario o clave incorrecta");

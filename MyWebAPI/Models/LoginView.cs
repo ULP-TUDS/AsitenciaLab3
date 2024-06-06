@@ -13,6 +13,6 @@ namespace MyWebAPI.Models
 		[DataType(DataType.Password)]
 		public string Clave { get; set; }
 
-		public int Rol { get; set; }
+		public string Rol { get; set; }
 	}
 }

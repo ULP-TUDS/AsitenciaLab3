@@ -21,7 +21,7 @@ namespace MyWebAPI.Models
          [ForeignKey(nameof(Zona))]
           public int? ZonaId { get; set; }
         public Zona? Zona { get; set; }
-        [NotMapped]
-        public bool? isUpdate{ get; set; } 
+        //[NotMapped]
+        //public bool? isUpdate{ get; set; } 
     }
 }
