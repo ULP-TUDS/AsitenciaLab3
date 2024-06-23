@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyWebAPI.Models;
+using MyWebAPI.Services;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace MyWebAPI.Controllers
@@ -16,25 +19,28 @@ namespace MyWebAPI.Controllers
     [Route("api/[controller]")]
 	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 	[ApiController]
-    
+    [Authorize(Policy = "Administrador")]
     public class UsuarioController : ControllerBase
     {
         private readonly DataContext _context;
         private readonly IConfiguration config;
+          private readonly PresenciaService _presenciaService;
 
         private readonly IWebHostEnvironment environment;
+  
 
-        public UsuarioController(DataContext context,IConfiguration config, IWebHostEnvironment env)
+
+        public UsuarioController(DataContext context,IConfiguration config, IWebHostEnvironment env,PresenciaService presenciaService)
         {
             _context = context;
             this.config = config;
             environment=env;
+             _presenciaService = presenciaService;
 
         }
 
-        // GET: api/Usuario
-        [HttpGet]
         
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios(int id)
         {
             
@@ -42,27 +48,36 @@ namespace MyWebAPI.Controllers
                 .Include(u => u.Turnos) // Incluye la propiedad de navegación Turno
                 .ToListAsync();
         }
- [HttpGet("GetUsuariosTurno")]
- [Authorize(Policy = "Administrador")]
-public async Task<IActionResult> GetUsuariosTurno([FromBody] Filtrado filtrado)
+
+  [HttpGet("GetUsuariosTurno")]
+    
+        public async Task<ActionResult<Asistencia>> GetUsuarios([FromQuery] string turno, [FromQuery] bool isSemana)
+        {  
+           DateTime start = DateTime.Now;
+            var asistencia = await _presenciaService.GetAsistenciaPorTurnoAsync(turno, isSemana, start);
+            return Ok(asistencia);
+        }
+
+ [HttpGet("GetUserAll")]
+        public async Task<ActionResult<List<Usuario>>> GetUserAll([FromQuery] string turno, [FromQuery] bool isSemana)
+        {
+            var usuarios = await _context.Usuario
+                                         .Include(u => u.Turnos) // Incluye la entidad relacionada Turnos
+                                         .Include(u => u.Puesto)
+                                         .Include(u => u.Rol) // Incluye la entidad relacionada Puesto
+                                         .Where(u => u.Turnos.Turno == turno && u.Semana == isSemana)
+                                         .ToListAsync();
+
+            return Ok(usuarios);
+        }
+[HttpPost("CargarAsistencia")]
+
+public async Task<IActionResult> CargarAsistencia(
+    [FromForm] DateTime fecha,
+    [FromForm] int usuarioId)
 {
-    var usuarios = await _context.Usuario
-        .Include(u => u.Turnos) // Incluye la propiedad de navegación Turno
-        .Where(u => u.TurnosId == filtrado.turnoId && u.Semana == filtrado.isSemana)
-        .ToListAsync();
+  
 
-    if (usuarios == null || !usuarios.Any())
-    {
-        return NotFound();
-    }
-
-    return Ok(usuarios);
-}
-
-
-[HttpPost("CargaPersonal")]
-public async Task<IActionResult> CargaPersonal([FromBody] Usuario usuario)
-{
     if (!ModelState.IsValid)
     {
         return BadRequest(ModelState);
@@ -70,23 +85,31 @@ public async Task<IActionResult> CargaPersonal([FromBody] Usuario usuario)
 
     try
     {
-        var mailexiste = await _context.Usuario
-            .FirstOrDefaultAsync(u => u.Email == usuario.Email);
-        if (mailexiste != null)
+     
+        var existingPresencia = await _context.Presencia
+            .FirstOrDefaultAsync(p => p.Fecha == fecha && p.UsuarioId == usuarioId);
+
+        if (existingPresencia == null)
         {
-            return BadRequest("El email ya está registrado.");
+          
+            Presencia nuevaPresencia = new Presencia
+            {
+                Fecha = fecha,
+                UsuarioId = usuarioId,
+           
+            };
+
+            _context.Add(nuevaPresencia);
+            await _context.SaveChangesAsync();
+            return Ok(nuevaPresencia);
         }
-        usuario.Password = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: usuario.Password,
-            salt: System.Text.Encoding.ASCII.GetBytes(config["Salt"]),
-            prf: KeyDerivationPrf.HMACSHA1,
-            iterationCount: 1000,
-            numBytesRequested: 256 / 8));
-
-        _context.Usuario.Add(usuario);
-        await _context.SaveChangesAsync();
-
-        return Ok(usuario);
+        else
+        {
+         
+            _context.Remove(existingPresencia);
+            await _context.SaveChangesAsync();
+            return Ok(existingPresencia);
+        }
     }
     catch (Exception ex)
     {
@@ -96,65 +119,239 @@ public async Task<IActionResult> CargaPersonal([FromBody] Usuario usuario)
 }
 
 
+ [HttpGet("usuario")]
+        public async Task<IActionResult> Usuario()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-       [HttpPost("login")]
-		[AllowAnonymous]
-		public async Task<IActionResult> Login([FromForm] LoginView loginView)
-		{ 
-			try
-			{
-				string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-					password: loginView.Clave,
-					salt: System.Text.Encoding.ASCII.GetBytes(config["Salt"]),
-					prf: KeyDerivationPrf.HMACSHA1,
-					iterationCount: 1000,
-					numBytesRequested: 256 / 8));
-					Console.WriteLine( loginView.Usuario);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
 
-			
-                  var p = await _context.Usuario
-            .Include(u => u.Rol) // Incluye la propiedad de navegación Rol
-           // .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Id == loginView.Rol);
-		   .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Nombre == loginView.Rol);
-				if (p == null || p.Password != hashed)
-				{
-					return BadRequest("Nombre de usuario o clave incorrecta");
-				}
-				else
-				{
-					var key = new SymmetricSecurityKey(
-						System.Text.Encoding.ASCII.GetBytes(config["TokenAuthentication:SecretKey"]));
-					var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-					var claims = new List<Claim>
-					{
-						new Claim(ClaimTypes.Name, p.Email),
-						new Claim("FullName", p.Nombre + " " + p.Apellido),
-						new Claim(ClaimTypes.Role, p.Rol.Nombre),
-						new Claim(ClaimTypes.NameIdentifier, p.UsuarioId.ToString())
-					
-						
+            var usuario = await _context.Usuario
+                .Include(u => u.Rol) // Incluye la propiedad de navegación Rol si es necesario
+                .FirstOrDefaultAsync(u => u.UsuarioId == int.Parse(userId));
 
-						
-					};
+            if (usuario == null)
+            {
+                return NotFound();
+            }
 
-					var token = new JwtSecurityToken(
-						issuer: config["TokenAuthentication:Issuer"],
-						audience: config["TokenAuthentication:Audience"],
-						claims: claims,
-						expires: DateTime.Now.AddMinutes(60),
-						signingCredentials: credenciales
-					);
-                    Console.WriteLine(p.Rol.Nombre);
-					return Ok(new JwtSecurityTokenHandler().WriteToken(token));
-				}
-			}
-			catch (Exception ex)
-			{
-				return BadRequest(ex.Message);
-			}
-		}
+            return Ok(usuario);
+        }
 
 
+
+
+
+[HttpGet("usuario/{id}")]
+
+
+public async Task<IActionResult> Usuario(int id)
+{
+    var usuario = await _context.Usuario
+        .Include(u => u.Rol) // Incluye la propiedad de navegación Rol si es necesario
+        .FirstOrDefaultAsync(u => u.UsuarioId == id);
+
+    if (usuario == null)
+    {
+        return NotFound();
+    }
+
+    return Ok(usuario);
+}
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+[HttpPost("cargarupdate")]
+public async Task<IActionResult> CargarUpdate([FromForm] IFormFile imagen, [FromForm] string usuario)
+{
+    try
+    {
+        // Deserializa el JSON al objeto Usuario
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        var usuarioObject = JsonSerializer.Deserialize<Usuario>(usuario, options);
+
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Obtiene el ID del usuario autenticado
+        var user = HttpContext.User;
+        var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(userIdClaim, out int propietarioId))
+        {
+            return BadRequest("Invalid user ID format in token");
+        }
+
+        // Busca el usuario existente en la base de datos
+        var usuarioencontrado = await _context.Usuario.FindAsync(propietarioId);
+        if (usuarioencontrado == null)
+        {
+            return NotFound("User not found");
+        }
+
+        // Actualiza las propiedades del usuario existente
+        usuarioencontrado.Nombre = usuarioObject.Nombre;
+        usuarioencontrado.Apellido = usuarioObject.Apellido;
+        usuarioencontrado.Email = usuarioObject.Email;
+         usuarioencontrado.Documento = usuarioObject.Documento;
+         usuarioencontrado.Domicilio = usuarioObject.Domicilio;
+          usuarioencontrado.Telefono = usuarioObject.Telefono;
+
+        if (usuarioObject.Password!="")
+        {
+          usuarioencontrado.Password = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: usuarioObject.Password,
+            salt: System.Text.Encoding.ASCII.GetBytes(config["Salt"]),
+            prf: KeyDerivationPrf.HMACSHA1,
+            iterationCount: 1000,
+            numBytesRequested: 256 / 8));
+        }
+      
+       
+        
+
+        // Si se ha subido una imagen, actualiza la propiedad Foto
+        if (imagen != null)
+        {
+            var uploadsRootFolder = Path.Combine(environment.WebRootPath, "uploads");
+            if (!Directory.Exists(uploadsRootFolder))
+            {
+                Directory.CreateDirectory(uploadsRootFolder);
+            }
+
+            var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(imagen.FileName);
+            var filePath = Path.Combine(uploadsRootFolder, uniqueFileName);
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await imagen.CopyToAsync(fileStream);
+            }
+
+            usuarioencontrado.Foto = Path.Combine("uploads", uniqueFileName);
+        }
+
+        // Guarda los cambios en la base de datos
+        _context.Usuario.Update(usuarioencontrado);
+        await _context.SaveChangesAsync();
+
+        return Ok(usuarioencontrado);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}
+//------------------------------------------------------------------------------------------------------------------------
+[HttpPost("sinimagen")]
+public async Task<IActionResult> Sinimagen([FromBody] Usuario usuario)
+{
+
+    try
+    {
+        var user = HttpContext.User;
+        var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(userIdClaim, out int propietarioId))
+        {
+          
+            return BadRequest("Invalid user ID format in token");
+        }
+
+        var usuarioencontrado = await _context.Usuario.FindAsync(propietarioId);
+        if (usuarioencontrado == null)
+        {
+            return NotFound("User not found");
+        }
+
+        usuarioencontrado.Nombre = usuario.Nombre;
+        usuarioencontrado.Apellido = usuario.Apellido;
+        usuarioencontrado.Email = usuario.Email;
+        usuarioencontrado.Documento = usuario.Documento;
+        usuarioencontrado.Domicilio = usuario.Domicilio;
+        usuarioencontrado.Telefono = usuario.Telefono;
+
+        // Solo actualizar la contraseña si se proporciona una nueva
+        if (!string.IsNullOrEmpty(usuario.Password))
+        {
+            usuarioencontrado.Password = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: usuario.Password,
+                salt: System.Text.Encoding.ASCII.GetBytes(config["Salt"]),
+                prf: KeyDerivationPrf.HMACSHA1,
+                iterationCount: 1000,
+                numBytesRequested: 256 / 8));
+        }
+
+        _context.Usuario.Update(usuarioencontrado);
+        await _context.SaveChangesAsync();
+
+        return Ok(usuarioencontrado);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, "Internal server error: " + ex.Message);
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------
+[HttpPost("login")]
+[AllowAnonymous]
+public async Task<IActionResult> Login([FromForm] LoginView loginView)
+{
+    try
+    {
+        string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: loginView.Clave,
+            salt: System.Text.Encoding.ASCII.GetBytes(config["Salt"]),
+            prf: KeyDerivationPrf.HMACSHA1,
+            iterationCount: 1000,
+            numBytesRequested: 256 / 8));
+
+        var p = await _context.Usuario
+            .Include(u => u.Rol)
+            .FirstOrDefaultAsync(u => u.Email == loginView.Usuario && u.Rol.Nombre == loginView.Rol);
+
+        if (p == null || p.Password != hashed)
+        {
+            return BadRequest("Nombre de usuario o clave incorrecta");
+        }
+        else
+        {
+            var key = new SymmetricSecurityKey(
+                System.Text.Encoding.ASCII.GetBytes(config["TokenAuthentication:SecretKey"]));
+            var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, p.Email),
+                new Claim("FullName", p.Nombre + " " + p.Apellido),
+                new Claim(ClaimTypes.Role, p.Rol.Nombre),
+                new Claim(ClaimTypes.NameIdentifier, p.UsuarioId.ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: config["TokenAuthentication:Issuer"],
+                audience: config["TokenAuthentication:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(60),
+                signingCredentials: credenciales
+            );
+
+            return Ok(new JwtSecurityTokenHandler().WriteToken(token));
+        }
+    }
+    catch (Exception ex)
+    {
+        // Manejo de excepciones según necesidad
+        return StatusCode(StatusCodes.Status500InternalServerError, "Error en el servidor");
+    }
+}
 
 
         		[HttpPut("put")]

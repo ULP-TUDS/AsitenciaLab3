@@ -10,7 +10,7 @@ namespace MyWebAPI.Models
     public class Presencia
     {
         [Key]
-        public int PresenciaId { get; set; }
+        public int? PresenciaId { get; set; }
 
          [ForeignKey(nameof(Usuario))]
          public int UsuarioId { get; set; }
@@ -21,6 +21,8 @@ namespace MyWebAPI.Models
          [ForeignKey(nameof(Zona))]
           public int? ZonaId { get; set; }
         public Zona? Zona { get; set; }
+[NotMapped]
+        public bool? ok { get; set; }
         //[NotMapped]
         //public bool? isUpdate{ get; set; } 
     }

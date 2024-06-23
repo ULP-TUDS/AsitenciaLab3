@@ -7,7 +7,7 @@ namespace MyWebAPI.Models
 {
     public class Filtrado
     {
-        public int turnoId { get; set; }
+        public string turno { get; set; }
         public bool isSemana { get; set; }
     }
 }

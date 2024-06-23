@@ -21,6 +21,52 @@ namespace MyWebAPI.Controller
             this.config = config;
 
         }
+ [HttpGet("zonas")]
+
+        public async Task<IActionResult> GetZonas()
+        {
+            var zonas = await _context.Zona.ToListAsync();
+            return Ok(zonas);
+        } 
+
+        
+ [HttpPut("putzona")]
+public async Task<IActionResult> PutZonas([FromBody] Zona zona)
+{
+    if (!ModelState.IsValid)
+    {
+        return BadRequest(ModelState);
+    }
+
+    try
+    {
+        var zonas = await _context.Zona
+            .FirstOrDefaultAsync(u => u.Id == zona.Id);
+        if (zonas == null)
+        {
+            return BadRequest("La zona no existe");
+        }
+
+     
+        zonas.seleccionada = zona.seleccionada;
+       
+
+        _context.Zona.Update(zonas);
+        await _context.SaveChangesAsync();
+
+        return Ok(zonas);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+    }
+}
+
+        
+
+
+
+        
         [HttpPost("CargarZona")]
         public async Task<IActionResult>  CargarZona([FromBody]Zona zona)
         {
@@ -49,13 +95,14 @@ return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred w
          
         }
 
- [HttpGet("RecuperarSeleccionada")]
-public async Task<IActionResult> RecuperarSeleccionada([FromBody] Filtrado filtrado)
+[HttpGet("RecuperarSeleccionada")]
+public async Task<IActionResult> RecuperarSeleccionada([FromQuery] string turno, [FromQuery] bool isSemana)
 {
+
     try
     {
         var fechaActual = DateTime.Today;
-        Console.WriteLine(fechaActual);
+
 
         // Recuperar zonas seleccionadas
         var zonasSeleccionadas = await _context.Zona
@@ -64,7 +111,7 @@ public async Task<IActionResult> RecuperarSeleccionada([FromBody] Filtrado filtr
 
         var empleadosPresentes = await _context.Presencia
             .Include(p => p.Usuario.Turnos)
-            .Where(p => p.Fecha.Date == fechaActual && p.Usuario.TurnosId == filtrado.turnoId && p.Usuario.Semana == filtrado.isSemana)
+            .Where(p => p.Fecha.Date == fechaActual && p.Usuario.Turnos.Turno == turno && p.Usuario.Semana == isSemana)
             .Select(p => p.Usuario)
             .ToListAsync();
 
@@ -72,42 +119,55 @@ public async Task<IActionResult> RecuperarSeleccionada([FromBody] Filtrado filtr
         var empleadosDesordenados = empleadosPresentes.OrderBy(x => random.Next()).ToList();
         var zonasDesordenadas = zonasSeleccionadas.OrderBy(x => random.Next()).ToList();
         
-        var gruposUsuarios = new List<Grupo>();
+        var gruposResponse = new List<GrupoResponse>();
         var updates = new List<Presencia>();
 
         for (int i = 0; i < empleadosDesordenados.Count; i += 2)
         {
-            Grupo grupo = new Grupo
+            if (i / 2 >= zonasDesordenadas.Count)
             {
-                Empleado1 = empleadosDesordenados[i],
-                zona = zonasDesordenadas[i / 2]  
+                break; // Asegúrate de no intentar acceder a una zona que no existe
+            }
+
+            var zona = zonasDesordenadas[i / 2];
+            var empleado1 = empleadosDesordenados[i];
+            var empleado2 = i + 1 < empleadosDesordenados.Count ? empleadosDesordenados[i + 1] : null;
+
+            var grupoResponse = new GrupoResponse
+            {
+                NombreEmpleado1 = $"{empleado1.Nombre} {empleado1.Apellido}",
+                NombreEmpleado2 = empleado2 != null ? $"{empleado2.Nombre} {empleado2.Apellido}" : null,
+                calle = zona.Calle,
+                Desde = zona.Desde,
+                Hasta = zona.Hasta
             };
 
-            if (i + 1 < empleadosDesordenados.Count)
+            var asistenciaEmpleado1 = await _context.Presencia
+                .FirstOrDefaultAsync(u => u.UsuarioId == empleado1.UsuarioId && u.Fecha.Date == fechaActual);
+            if (asistenciaEmpleado1 != null)
             {
-                grupo.Empleado2 = empleadosDesordenados[i + 1];
+                asistenciaEmpleado1.ZonaId = zona.Id;
+                updates.Add(asistenciaEmpleado1);
             }
 
-            var asistenciaEmpleado1 = await _context.Presencia
-                .FirstOrDefaultAsync(u => u.UsuarioId == grupo.Empleado1.UsuarioId);
-            asistenciaEmpleado1.ZonaId = grupo.zona.Id;
-            updates.Add(asistenciaEmpleado1);
-
-            if (grupo.Empleado2 != null)
+            if (empleado2 != null)
             {
                 var asistenciaEmpleado2 = await _context.Presencia
-                    .FirstOrDefaultAsync(u => u.UsuarioId == grupo.Empleado2.UsuarioId);
-                asistenciaEmpleado2.ZonaId = grupo.zona.Id;
-                updates.Add(asistenciaEmpleado2);
+                    .FirstOrDefaultAsync(u => u.UsuarioId == empleado2.UsuarioId && u.Fecha.Date == fechaActual);
+                if (asistenciaEmpleado2 != null)
+                {
+                    asistenciaEmpleado2.ZonaId = zona.Id;
+                    updates.Add(asistenciaEmpleado2);
+                }
             }
 
-            gruposUsuarios.Add(grupo);
+            gruposResponse.Add(grupoResponse);
         }
 
         _context.Presencia.UpdateRange(updates);
         await _context.SaveChangesAsync();
-
-        return Ok(gruposUsuarios);
+     
+        return Ok(gruposResponse);
     }
     catch (Exception e)
     {
@@ -115,7 +175,6 @@ public async Task<IActionResult> RecuperarSeleccionada([FromBody] Filtrado filtr
         return StatusCode(StatusCodes.Status500InternalServerError, "Ocurrió un error mientras se procesaba tu solicitud.");
     }
 }
-
 
     }
 }

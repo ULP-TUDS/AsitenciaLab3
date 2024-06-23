@@ -10,6 +10,8 @@ using MimeKit;
 using MailKit.Net.Smtp;
 using System.Threading.Tasks;
 using MyWebAPI.Models;
+using MyWebAPI.Services;
+using Newtonsoft.Json.Serialization;
 
 
 
@@ -31,6 +33,7 @@ builder.Services.AddControllers().AddNewtonsoftJson(options =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<PresenciaService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -70,14 +73,26 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         };
     });
 
-
+builder.Services.AddControllers()
+                .AddNewtonsoftJson(options =>
+                {
+                    options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                });
+    
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("Administrador", policy => 
-        policy.RequireRole("Administrador", "SuperAdministrador"));
-});
+    options.AddPolicy("Administrador", policy =>
+            policy.RequireRole("Administrador"));
 
+        options.AddPolicy("Empleado", policy =>
+            policy.RequireRole("Empleado"));
+
+               options.AddPolicy("AdministradorOEmpleado", policy =>
+            policy.RequireRole("Administrador", "Empleado"));
+
+
+});
 builder.Services.AddMvc();
 builder.Services.AddSignalR();
 
@@ -87,6 +102,7 @@ app.UseCors(x => x
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
+
 
 app.UseStaticFiles();
 app.UseRouting();

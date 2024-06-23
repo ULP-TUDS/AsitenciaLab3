@@ -187,3 +187,4 @@ C:\Users\Home\OneDrive\Escritorio\Promlab3\AsitenciaLab3\MyWebAPI\obj\Debug\net8
 C:\Users\Home\OneDrive\Escritorio\Promlab3\AsitenciaLab3\MyWebAPI\obj\Debug\net8.0\MyWebAPI.pdb
 C:\Users\Home\OneDrive\Escritorio\Promlab3\AsitenciaLab3\MyWebAPI\obj\Debug\net8.0\MyWebAPI.genruntimeconfig.cache
 C:\Users\Home\OneDrive\Escritorio\Promlab3\AsitenciaLab3\MyWebAPI\obj\Debug\net8.0\ref\MyWebAPI.dll
+C:\Users\Home\OneDrive\Escritorio\Promlab3\AsitenciaLab3\MyWebAPI\bin\Debug\net8.0\MyWebAPI.staticwebassets.runtime.json
